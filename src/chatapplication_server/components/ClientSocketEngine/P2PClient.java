@@ -25,6 +25,7 @@ import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.WindowConstants;
 import java.lang.Math;
+import java.util.concurrent.ThreadLocalRandom;
 
 import java.net.*;
 import java.util.logging.Level;
@@ -46,7 +47,7 @@ public class P2PClient extends JFrame implements ActionListener
     private final JTextArea ta;
     protected boolean keepGoing;
     JButton send, start;
-    int a, b, p, g, A, B, K;
+    long a, b, p, g, A, B, K;
     
     P2PClient(){
         super("P2P Client Chat");
@@ -128,7 +129,7 @@ public class P2PClient extends JFrame implements ActionListener
         if(o == start){
             new ListenFromClient().start();
             p = 23;
-            g = 21;
+            g = 5;
             this.send("__KEY_EXCHANGE_1__p:" + String.valueOf(p) + "g:" + String.valueOf(g) + ";");
         }
     }
@@ -164,7 +165,9 @@ public class P2PClient extends JFrame implements ActionListener
 
         try {
             sOutput.writeObject(new ChatMessage(str.length(), str));
-            display("You: " + str);
+            if(!str.startsWith("__KEY_EXCHANGE_")){
+                display("You: " + str);
+            }
             sOutput.close();
             socket.close();
         } catch (IOException ex) {
@@ -211,27 +214,29 @@ public class P2PClient extends JFrame implements ActionListener
                                 String msg = ((ChatMessage) sInput.readObject()).getMessage();
                                 System.out.println("Msg:"+msg);
                                 if(msg.startsWith("__KEY_EXCHANGE_1__")){ //bob
-                                    p = Integer.parseInt(msg.substring(msg.lastIndexOf("p:") + 2, msg.lastIndexOf("g:")));
-                                    g = Integer.parseInt(msg.substring(msg.lastIndexOf("g:") + 2, msg.lastIndexOf(";")));
-                                    a = 22; //TODO: GENERATE
-                                    A = (int)Math.pow(g, a) % p;
-                                    System.out.println("BOB, BECAUSE OF 1 p=" + p + ", g=" + g + ", a=" + a + ", A=" + A + ";");
+                                    p = Long.parseLong(msg.substring(msg.lastIndexOf("p:") + 2, msg.lastIndexOf("g:")));
+                                    g = Long.parseLong(msg.substring(msg.lastIndexOf("g:") + 2, msg.lastIndexOf(";")));
+                                    a = (long) Math.abs(ThreadLocalRandom.current().nextInt(0,10));
+                                    A = (long)(Math.pow(g, a) % p);
+                                    System.out.println("Bob p=" + p + ", g=" + g + ", a=" + a + ", A=" + A + ";");
                                     send("__KEY_EXCHANGE_2__A:" + String.valueOf(A) + ";");
                                 }
                                 else if(msg.startsWith("__KEY_EXCHANGE_2__")){ //alice
-                                    A = Integer.parseInt(msg.substring(msg.lastIndexOf("A:") + 2, msg.lastIndexOf(";")));
-                                    b = 88; //TODO: GENERATE
-                                    B = (int)Math.pow(g, b) % p;
-                                    K = (int)Math.pow(A, b) % p;
+                                    A = Long.parseLong(msg.substring(msg.lastIndexOf("A:") + 2, msg.lastIndexOf(";")));
+                                    b = (long) Math.abs(ThreadLocalRandom.current().nextInt(0,20));
+                                    B = (long)(Math.pow(g, b) % p);
+                                    System.out.println(B);
+                                    K = (long)(Math.pow(A, b) % p);
+                                    System.out.println(K);
                                     send("__KEY_EXCHANGE_3__B:" + String.valueOf(B) + ";");
                                     
-                                    System.out.println("Alice, BECAUSE OF 2 p=" + p + ", g=" + g + ", A=" + A + ", b=" + b + ", B=" + B + ", K=" + K);
+                                    System.out.println("Alice 2 p=" + p + ", g=" + g + ", A=" + A + ", b=" + b + ", B=" + B + ", K=" + K);
                                 }
                                 else if(msg.startsWith("__KEY_EXCHANGE_3__")){//bob
-                                    B = Integer.parseInt(msg.substring(msg.lastIndexOf("B:") + 2, msg.lastIndexOf(";")));
-                                    K = (int)Math.pow(B, a) % p;
+                                    B = Long.parseLong(msg.substring(msg.lastIndexOf("B:") + 2, msg.lastIndexOf(";")));
+                                    K = (long)(Math.pow(B, a) % p);
                                     
-                                    System.out.println("BOB, BECAUSE OF 3 p=" + p + ", g=" + g + ", A=" + A + ", a=" + a + ", B=" + B + ", K=" + K);
+                                    System.out.println("Bob 3 p=" + p + ", g=" + g + ", A=" + A + ", a=" + a + ", B=" + B + ", K=" + K);
                                 }
                                 
                                 else {
